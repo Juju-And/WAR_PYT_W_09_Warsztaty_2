@@ -6,7 +6,7 @@ import argparse
 ctx = create_connection()
 
 parser = argparse.ArgumentParser(
-    description='This is a PyMOTW sample program',
+    description='This is a messenger',
 )
 
 
@@ -22,31 +22,31 @@ def require_len(length):
     return checked_len
 
 
-parser.add_argument('-u', action='store',
+parser.add_argument('-u', '--user', action='store',
                     dest="user_name",
                     help='Insert user name')
 
-parser.add_argument('-m', action='store',
+parser.add_argument('-m', '--mail', action='store',
                     dest="user_email",
                     help='Insert users email')
 
-parser.add_argument('-n', type=require_len(8), action='store',
+parser.add_argument('-n', '--new-pass', type=require_len(8), action='store',
                     dest="new_password",
                     help='Insert new password')
 
-parser.add_argument('-e', action='store',
+parser.add_argument('-e', '--edit', action='store',
                     dest="modify_user",
                     help='Insert user name to modify')
 
-parser.add_argument('-p', type=require_len(8), action='store',
+parser.add_argument('-p', '--password', type=require_len(8), action='store',
                     dest="user_password",
                     help='Insert your password')
 
-parser.add_argument('-l', action='store',
+parser.add_argument('-l', '--list', action='store_true',
                     dest="users_list",
                     help='Require to list all users')
 
-parser.add_argument('-d', action='store',
+parser.add_argument('-d', '--delete', action='store',
                     dest="delete_user",
                     help='Enter username to delete')
 
@@ -68,33 +68,47 @@ def add_user():
     user.save_to_db(cursor)
     ctx.commit()
 
-
-#
-#
 # add_user()
 
 
-# Jeśli użytkownik wprowadził parametry -u oraz -p, ale nie wprowadził parametru -e ani –d,
-# sprawdzamy, czy użytkownik o takim emailu istnieje, a jeśli nie, to zakładamy użytkownika
-# i nadajemy mu hasło. Jeśli użytkownik istnieje, zgłaszamy błąd.
-
 def user_and_password():
-    user_password = User.load_user_by_name_and_pass(ctx.cursor(), results.user_name, results.user_password)
-    if user_password and not results.delete_user and not results.modify_user:
+    correct_user_password = User.load_user_by_name_and_pass(ctx.cursor(), results.user_name, results.user_password)
+    if not results.user_password \
+            and not results.delete_user \
+            and not results.modify_user \
+            and not results.users_list:
+        # return 'No argument was added, try to use "-h/--help"'
+        return parser.print_help()
+    elif correct_user_password \
+            and not results.delete_user \
+            and not results.modify_user \
+            and not results.users_list:
         return "User already exists, maybe you meant to delete '-d' or modify '-e'?"
-    elif not user_password and not results.delete_user and not results.modify_user:
+    elif results.user_name and results.user_password \
+            and not correct_user_password \
+            and not results.delete_user \
+            and not results.modify_user:
         add_user()
         return "User {} was added to the database".format(results.user_name)
-    elif user_password and results.modify_user and not results.delete_user:
+    elif correct_user_password and results.modify_user \
+            and not results.delete_user:
         User.update_password(ctx, password_hash(results.new_password, None), results.user_name)
         # print(results.new_password)
         # print(password_hash(results.new_password, None))
         return "Password successfully changed!"
-    elif user_password and results.delete_user and not results.modify_user:
+    elif correct_user_password and results.delete_user \
+            and not results.modify_user:
         User.delete_by_username(ctx.cursor(), results.user_name)
         return "User {} was deleted".format(results.user_name)
-    elif not results.user_password or not results.user_name:
+    elif not results.user_password \
+            or not results.user_name:
         return "User password or user name is missing, fill it to use the function"
+    elif correct_user_password and results.users_list:
+        users = User.load_all_users(ctx.cursor())
+        for user in users:
+            print(user)
+
+
 
 
 print(user_and_password())

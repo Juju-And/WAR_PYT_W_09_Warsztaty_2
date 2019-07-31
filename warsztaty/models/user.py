@@ -97,3 +97,6 @@ class User(object):
         cursor = ctx.cursor()
         cursor.execute(sql, (new_raw_password, username))
         ctx.commit()
+
+    def __repr__(self):
+        return '{}, {}, {}'.format(self.id, self.username, self.email)
